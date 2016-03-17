@@ -351,14 +351,25 @@ class PhpLanguage(object):
 
 class PythonLanguage(object):
 
+  PYTHON_TOX = {'2.7': 'py27', '3.5': 'py35', 'pypy': 'pypy'}
+  PYTHON_INTERP = {'2.7': 'python2', '3.5': 'python3', 'pypy': 'pypy'}
+
   def __init__(self):
-    self._build_python_versions = [('2.7', 'py27'), ('3.5', 'py35'), ('pypy', 'pypy')]
     self._has_python_versions = []
 
   def configure(self, config, args):
     self.config = config
     self.args = args
     _check_compiler(self.args.compiler, ['default'])
+    if self.args.travis:
+      python_version = os.getenv('TRAVIS_PYTHON_VERSION')
+      tox_dir = PythonLanguage.PYTHON_TOX.get(python_version)
+      if tox_dir:
+        self._build_python_versions = [(python_version, tox_dir)]
+      else:
+        raise RuntimeError('Invalid TRAVIS_PYTHON_VERSION')
+    else:
+      self._build_python_versions = PythonLanguage.PYTHON_TOX.items()
 
   def test_specs(self):
     # load list of known test suites
@@ -399,10 +410,13 @@ class PythonLanguage(object):
     commands = []
     for python_version, tox_dir in self._build_python_versions:
       try:
-        python_interpreter = 'python' + python_version if python_version != 'pypy' else 'pypy'
         with open(os.devnull, 'w') as output:
-          subprocess.check_call(['which', python_interpreter],
-                                stdout=output, stderr=output)
+          if self.args.travis:
+            subprocess.check_call(['which', 'python'],
+                                  stdout=output, stderr=output)
+          else:
+            subprocess.check_call(['which', PythonLanguage.PYTHON_INTERP.get(python_version)],
+                                  stdout=output, stderr=output)
         commands.append(['tools/run_tests/build_python.sh', tox_dir])
         self._has_python_versions.append((python_version, tox_dir))
       except:
