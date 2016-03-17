@@ -46,9 +46,9 @@ then
   export GRPC_PYTHON_ENABLE_CYTHON_TRACING=1
 fi
 
-tox --notest
+tox --notest -e $1
 
-$ROOT/.tox/py27/bin/python $ROOT/setup.py build
-$ROOT/.tox/py27/bin/python $ROOT/setup.py build_py
-$ROOT/.tox/py27/bin/python $ROOT/setup.py build_ext --inplace
-$ROOT/.tox/py27/bin/python $ROOT/setup.py gather --test
+$ROOT/.tox/$1/bin/python $ROOT/setup.py build
+$ROOT/.tox/$1/bin/python $ROOT/setup.py build_py
+$ROOT/.tox/$1/bin/python $ROOT/setup.py build_ext --inplace
+$ROOT/.tox/$1/bin/python $ROOT/setup.py gather --test

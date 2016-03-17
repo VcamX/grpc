@@ -29,6 +29,10 @@
 
 from __future__ import absolute_import
 
+try:
+  import cStringIO as StringIO
+except ImportError:
+  from io import StringIO
 import collections
 import itertools
 import traceback

@@ -352,7 +352,7 @@ class PhpLanguage(object):
 class PythonLanguage(object):
 
   def __init__(self):
-    self._build_python_versions = ['2.7']
+    self._build_python_versions = [('2.7', 'py27'), ('3.5', 'py35'), ('pypy', 'pypy')]
     self._has_python_versions = []
 
   def configure(self, config, args):
@@ -365,22 +365,25 @@ class PythonLanguage(object):
     with open('src/python/grpcio/tests/tests.json') as tests_json_file:
       tests_json = json.load(tests_json_file)
     environment = dict(_FORCE_ENVIRON_FOR_WRAPPERS)
-    environment['PYVER'] = '2.7'
-    if self.config.build_config != 'gcov':
-      return [self.config.job_spec(
-          ['tools/run_tests/run_python.sh'],
-          None,
-          environ=dict(environment.items() +
-                       [('GRPC_PYTHON_TESTRUNNER_FILTER', suite_name)]),
-          shortname='py.test.%s' % suite_name,
-          timeout_seconds=5*60)
-          for suite_name in tests_json]
-    else:
-      return [self.config.job_spec(['tools/run_tests/run_python.sh'],
-                                   None,
-                                   environ=environment,
-                                   shortname='py.test.coverage',
-                                   timeout_seconds=15*60)]
+    specs = []
+    for python_version, tox_dir in self._has_python_versions:
+      if self.config.build_config != 'gcov':
+        specs.extend([self.config.job_spec(
+            ['tools/run_tests/run_python.sh', tox_dir],
+            None,
+            environ=dict(environment.items() +
+                         [('PYENV', python_version), ('GRPC_PYTHON_TESTRUNNER_FILTER', suite_name)]),
+            shortname='py.test.%s' % suite_name,
+            timeout_seconds=5*60)
+            for suite_name in tests_json])
+      else:
+        specs.extend([self.config.job_spec(['tools/run_tests/run_python.sh', tox_dir],
+                                     None,
+                                     environ=dict(environment.items() +
+                                                  [('PYENV', python_version)]),
+                                     shortname='py.test.coverage',
+                                     timeout_seconds=15*60)])
+    return specs
 
 
   def pre_build_steps(self):
@@ -394,13 +397,14 @@ class PythonLanguage(object):
 
   def build_steps(self):
     commands = []
-    for python_version in self._build_python_versions:
+    for python_version, tox_dir in self._build_python_versions:
       try:
+        python_interpreter = 'python' + python_version if python_version != 'pypy' else 'pypy'
         with open(os.devnull, 'w') as output:
-          subprocess.check_call(['which', 'python' + python_version],
+          subprocess.check_call(['which', python_interpreter],
                                 stdout=output, stderr=output)
-        commands.append(['tools/run_tests/build_python.sh', python_version])
-        self._has_python_versions.append(python_version)
+        commands.append(['tools/run_tests/build_python.sh', tox_dir])
+        self._has_python_versions.append((python_version, tox_dir))
       except:
         jobset.message('WARNING', 'Missing Python ' + python_version,
                        do_newline=True)

@@ -46,7 +46,7 @@ then
   export GRPC_PYTHON_ENABLE_CYTHON_TRACING=1
   tox
 else
-  $ROOT/.tox/py27/bin/python $ROOT/setup.py test_lite
+  $ROOT/.tox/$1/bin/python $ROOT/setup.py test_lite
 fi
 
 mkdir -p $ROOT/reports
